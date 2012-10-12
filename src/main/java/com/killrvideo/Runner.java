@@ -15,7 +15,7 @@ public class Runner {
 	private static final String CLUSTER_NAME = "Test Cluster";
 	
 	// If you used the database setup file with this project, the default should be fine. Change if you need to.
-	private static final String KEYSPACE = "Killervideo";
+	private static final String KEYSPACE = "Killrvideo";
 	
 	/**
 	 * @param args
