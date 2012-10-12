@@ -6,16 +6,13 @@ import java.util.ArrayList;
 import java.util.UUID;
 
 import me.prettyprint.cassandra.model.CqlQuery;
-import me.prettyprint.cassandra.model.CqlRows;
 import me.prettyprint.cassandra.serializers.StringSerializer;
 import me.prettyprint.cassandra.serializers.UUIDSerializer;
-import me.prettyprint.cassandra.utils.StringUtils;
 import me.prettyprint.hector.api.Keyspace;
 import me.prettyprint.hector.api.beans.ColumnSlice;
 import me.prettyprint.hector.api.exceptions.HectorException;
 import me.prettyprint.hector.api.factory.HFactory;
 import me.prettyprint.hector.api.mutation.Mutator;
-import me.prettyprint.hector.api.query.QueryResult;
 import me.prettyprint.hector.api.query.SliceQuery;
 
 public class BusinessLogic {
@@ -26,28 +23,11 @@ public class BusinessLogic {
 	public void setUser(User user, Keyspace keyspace) {
 		StringSerializer se = StringSerializer.get();
 		CqlQuery<String,String,String> cqlQuery = new CqlQuery<String,String,String>(keyspace, se, se, se);
-		String cqlSource = "insert into Users (username, firstname, lastname, password) values (''{0}'',''{1}'',''{2}'',''{3}'')";
+		String cqlSource = "insert into users (username, firstname, lastname, password) values (''{0}'',''{1}'',''{2}'',''{3}'')";
 		String cql = MessageFormat.format(cqlSource, user.getUsername(), user.getFirstname(), user.getLastname(), user.getPassword());
 		cqlQuery.setQuery(cql);
-		QueryResult<CqlRows<String,String,String>> result = cqlQuery.execute();
+		cqlQuery.execute();
 		
-		CqlRows<String, String, String> cqlRows = result.get();
-		int x = 1;
-//		Mutator<String> mutator = HFactory.createMutator(keyspace, stringSerializer);
-
-//		try {
-//
-//			mutator.addInsertion(user.getUsername(), "users",
-//					HFactory.createStringColumn("firstname", user.getFirstname()));
-//			mutator.addInsertion(user.getUsername(), "users",
-//					HFactory.createStringColumn("lastname", user.getLastname()));
-//			mutator.addInsertion(user.getUsername(), "users",
-//					HFactory.createStringColumn("password", user.getPassword()));
-//
-//			mutator.execute();
-//		} catch (HectorException he) {
-//			throw he;
-//		}
 	}
 
 	public User getUser(String username) {

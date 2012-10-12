@@ -2,10 +2,14 @@ package com.killrvideo;
 
 
 import java.sql.Timestamp;
+import java.util.List;
 import java.util.UUID;
 
+import me.prettyprint.cassandra.model.AllOneConsistencyLevelPolicy;
 import me.prettyprint.hector.api.Cluster;
+import me.prettyprint.hector.api.ConsistencyLevelPolicy;
 import me.prettyprint.hector.api.Keyspace;
+import me.prettyprint.hector.api.ddl.KeyspaceDefinition;
 import me.prettyprint.hector.api.factory.HFactory;
 
 public class Runner {
@@ -28,6 +32,7 @@ public class Runner {
 
 		Cluster myCluster = HFactory.getOrCreateCluster(CLUSTER_NAME, "localhost:9160");
 		Keyspace keyspace = HFactory.createKeyspace(KEYSPACE, myCluster);
+		keyspace.setConsistencyLevelPolicy(new AllOneConsistencyLevelPolicy());
 
 		// Create a user and video for testing
 		User user = new User("pmcfadin", "secretPassword123", "Patrick", "McFadin");
