@@ -15,6 +15,10 @@ public class User {
 		
 	}
 	
+	public User(String username, String firstname, String lastname) {
+		this(username, "", firstname, lastname);
+	}
+	
 	public User(String username, String password, String firstname, String lastname) {
 		super();
 		this.username = username;
@@ -37,6 +41,10 @@ public class User {
 
 	public void setPassword(String password) {
 		this.password = DigestUtils.md5Hex(password);
+	}
+	
+	public void setPasswordDigest(String password) {
+		this.password = password;
 	}
 
 	public String getFirstname() {

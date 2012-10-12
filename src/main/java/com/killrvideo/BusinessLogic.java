@@ -6,13 +6,17 @@ import java.util.ArrayList;
 import java.util.UUID;
 
 import me.prettyprint.cassandra.model.CqlQuery;
+import me.prettyprint.cassandra.model.CqlRows;
 import me.prettyprint.cassandra.serializers.StringSerializer;
 import me.prettyprint.cassandra.serializers.UUIDSerializer;
 import me.prettyprint.hector.api.Keyspace;
 import me.prettyprint.hector.api.beans.ColumnSlice;
+import me.prettyprint.hector.api.beans.HColumn;
+import me.prettyprint.hector.api.beans.Row;
 import me.prettyprint.hector.api.exceptions.HectorException;
 import me.prettyprint.hector.api.factory.HFactory;
 import me.prettyprint.hector.api.mutation.Mutator;
+import me.prettyprint.hector.api.query.QueryResult;
 import me.prettyprint.hector.api.query.SliceQuery;
 
 public class BusinessLogic {
@@ -24,20 +28,33 @@ public class BusinessLogic {
 		StringSerializer se = StringSerializer.get();
 		CqlQuery<String,String,String> cqlQuery = new CqlQuery<String,String,String>(keyspace, se, se, se);
 		String cqlSource = "insert into users (username, firstname, lastname, password) values (''{0}'',''{1}'',''{2}'',''{3}'')";
-		String cql = MessageFormat.format(cqlSource, user.getUsername(), user.getFirstname(), user.getLastname(), user.getPassword());
+		String cql = MessageFormat.format(cqlSource, q(user.getUsername()), q(user.getFirstname()),q( user.getLastname()), q(user.getPassword()));
 		cqlQuery.setQuery(cql);
 		cqlQuery.execute();
-		
+	}
+	
+	private static String q(String s) {
+		return s.replace("'","''");
 	}
 
-	public User getUser(String username) {
+	public User getUser(String username, Keyspace keyspace) {
 
-		// TODO Implement this method
-		/*
-		 * A simple method to get a single user based on the username key. After
-		 * you get the data from Cassandra, populate and return a User object.
-		 */
-
+		StringSerializer se = StringSerializer.get();
+		CqlQuery<String,String,String> cqlQuery = new CqlQuery<String,String,String>(keyspace, se, se, se);
+		String cqlSource = "select * from users where username = ''{0}''";
+		String cql = MessageFormat.format(cqlSource, q(username));
+		cqlQuery.setQuery(cql);
+		QueryResult<CqlRows<String, String, String>> result = cqlQuery.execute();
+		for (Row<String, String, String> x: result.get()) {
+			ColumnSlice<String, String> columnSlice = x.getColumnSlice();
+			HColumn<String, String> usernameCol = columnSlice.getColumnByName("username");
+			HColumn<String, String> firstnameCol = columnSlice.getColumnByName("firstname");
+			HColumn<String, String> lastnameCol = columnSlice.getColumnByName("lastname");
+			HColumn<String, String> passwordCol = columnSlice.getColumnByName("password");
+			User u = new User(usernameCol.getValue(), firstnameCol.getValue(), lastnameCol.getValue());
+			u.setPasswordDigest(passwordCol.getValue());
+			return u;
+		}
 		return null;
 	}
 

@@ -42,6 +42,9 @@ public class Runner {
 		
 		System.out.println("Setting a user");
 		bl.setUser(user, keyspace);
+		
+		User loadedUser = bl.getUser(user.getUsername(), keyspace);
+		System.out.println("Loaded name: "+loadedUser.getFirstname()+" "+loadedUser.getLastname());
 
 		System.out.println("Setting a video");
 		bl.setVideo(video, keyspace);
