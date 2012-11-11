@@ -1,14 +1,22 @@
 package com.killrvideo;
 
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
+import java.sql.Statement;
 import java.sql.Timestamp;
 import java.text.MessageFormat;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.UUID;
 
 import me.prettyprint.cassandra.model.CqlQuery;
 import me.prettyprint.cassandra.model.CqlRows;
 import me.prettyprint.cassandra.serializers.StringSerializer;
 import me.prettyprint.cassandra.serializers.UUIDSerializer;
+import me.prettyprint.cassandra.utils.TimeUUIDUtils;
 import me.prettyprint.hector.api.Keyspace;
 import me.prettyprint.hector.api.beans.ColumnSlice;
 import me.prettyprint.hector.api.beans.HColumn;
@@ -58,24 +66,25 @@ public class BusinessLogic {
 		return null;
 	}
 
-	public void setVideo(Video video, Keyspace keyspace) {
+	public void setVideo(final Video video, Keyspace keyspace) {
 
-		Mutator<UUID> mutator = HFactory.createMutator(keyspace, UUIDSerializer.get());
+		withConnection(new IStatementActor() {
 
-		try {
-			mutator.addInsertion(video.getVideoId(), "videos",
-					HFactory.createStringColumn("videoname", video.getVideoName()));
-			mutator.addInsertion(video.getVideoId(), "videos",
-					HFactory.createStringColumn("username", video.getUsername()));
-			mutator.addInsertion(video.getVideoId(), "videos",
-					HFactory.createStringColumn("description", video.getDescription()));
-			mutator.addInsertion(video.getVideoId(), "videos",
-					HFactory.createStringColumn("tags", video.getDelimitedTags()));
+			public Statement act(Connection conn) throws SQLException {
+				String query = "insert into videos (videoid, videoname, username, description, tags) values (?,?,?,?,?)";
+				PreparedStatement statement = conn.prepareStatement(query);
 
-			mutator.execute();
-		} catch (HectorException he) {
-			he.printStackTrace();
-		}
+				statement.setBytes(1, TimeUUIDUtils.asByteArray(video.getVideoId()));
+				statement.setString(2, video.getVideoName());
+				statement.setString(3, video.getUsername());
+				statement.setString(4, video.getDescription());
+				statement.setString(5, video.getDelimitedTags());
+
+				statement.executeUpdate();
+				return statement;
+			}
+		});
+
 	}
 
 	public Video getVideoByUUID(UUID videoId, Keyspace keyspace) {
@@ -104,31 +113,68 @@ public class BusinessLogic {
 
 	public void setVideoWithTagIndex(Video video, Keyspace keyspace) {
 
-		Mutator<UUID> UUIDmutator = HFactory.createMutator(keyspace, UUIDSerializer.get());
-		Mutator<String> mutator = HFactory.createMutator(keyspace, stringSerializer);
-
 		try {
+			setVideo(video, keyspace);
 
-			UUIDmutator.addInsertion(video.getVideoId(), "videos",
-					HFactory.createStringColumn("videoname", video.getVideoName()));
-			UUIDmutator.addInsertion(video.getVideoId(), "videos",
-					HFactory.createStringColumn("username", video.getUsername()));
-			UUIDmutator.addInsertion(video.getVideoId(), "videos",
-					HFactory.createStringColumn("description", video.getDescription()));
-			UUIDmutator.addInsertion(video.getVideoId(), "videos",
-					HFactory.createStringColumn("tags", video.getDelimitedTags()));
-
-			for (String tag : video.getTags()) {
-				mutator.addInsertion(tag, "tag_index", HFactory.createStringColumn(video.getVideoId().toString(), ""));
-			}
-
-			UUIDmutator.execute();
-			mutator.execute();
+			tagVideo(video, keyspace);
 
 		} catch (HectorException he) {
-			he.printStackTrace();
+			throw new RuntimeException(he);
 		}
 
+	}
+
+	private void tagVideo(final Video video, final Keyspace keyspace) {
+		for (final String tag : video.getTags()) {
+
+			withConnection(new IStatementActor() {
+
+				public Statement act(Connection conn) throws SQLException {
+					String query = "insert into tag_index ( tag, videoid, info) values (?,?,?)";
+					PreparedStatement statement = conn.prepareStatement(query);
+					statement.setString(1, tag);
+					statement.setBytes(2, TimeUUIDUtils.asByteArray(video.getVideoId()));
+					statement.setString(3, makedate(new Date()));
+					statement.executeUpdate();
+					return statement;
+
+				}
+			});
+		}
+	}
+
+	private void withConnection(IStatementActor actor) {
+		Statement statement = null;
+		Connection conn = null;
+		try {
+			Class.forName("org.apache.cassandra.cql.jdbc.CassandraDriver");
+			conn = DriverManager.getConnection("jdbc:cassandra://localhost:9160/Killrvideo?version=3.0.0");
+
+			statement = actor.act(conn);
+
+		} catch (Exception e) {
+			throw new RuntimeException(e);
+	 	} finally {
+	 		try {
+	 			if (statement != null)
+					statement.close();
+			} catch (SQLException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+	 		try {
+	 			if (conn != null)
+				conn.close();
+			} catch (SQLException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+	 	}
+	}
+
+	private String makedate(Date date) {
+		SimpleDateFormat ISO8601DATEFORMAT = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'");
+		return ISO8601DATEFORMAT.format(date);
 	}
 
 	public void setVideoWithUserIndex(Video video, Keyspace keyspace) {
@@ -200,35 +246,43 @@ public class BusinessLogic {
 		return 0;
 	}
 
-	public void setVideoStartEvent(UUID videoId, String username, Timestamp timestamp, Keyspace keyspace) {
+	public void setVideoStartEvent(final UUID videoId, final String username, final Date date, Keyspace keyspace) {
+		withConnection(new IStatementActor() {
 
-		Mutator<String> mutator = HFactory.createMutator(keyspace, stringSerializer);
+			public Statement act(Connection conn) throws SQLException {
+				String query = "insert into video_event ( videoid, username, event_type, event_date) values (?,?,?,?)";
+				PreparedStatement statement = conn.prepareStatement(query);
+				statement.setBytes(1, TimeUUIDUtils.asByteArray(videoId));
+				statement.setString(2, username);
+				statement.setString(3, "start");
+				statement.setString(4, makedate(date));
+				statement.executeUpdate();
+				return statement;
 
-		try {
-
-			mutator.addInsertion(username + ":" + videoId, "video_event",
-					HFactory.createStringColumn("start:" + timestamp, ""));
-
-			mutator.execute();
-		} catch (HectorException he) {
-			he.printStackTrace();
-		}
+			}
+		});
 
 	}
 
-	public void setVideoStopEvent(UUID videoId, String username, Timestamp stopEvent, Timestamp videoTimestamp,
+	public void setVideoStopEvent(final UUID videoId, final String username, final Date date, 
+			final int positionInSeconds,
 			Keyspace keyspace) {
-		Mutator<String> mutator = HFactory.createMutator(keyspace, stringSerializer);
+		withConnection(new IStatementActor() {
 
-		try {
+			public Statement act(Connection conn) throws SQLException {
+				String query = "insert into video_event ( videoid, username, event_type, event_date, extra_info) values (?,?,?,?,?)";
+				PreparedStatement statement = conn.prepareStatement(query);
+				statement.setBytes(1, TimeUUIDUtils.asByteArray(videoId));
+				statement.setString(2, username);
+				statement.setString(3, "stop");
+				statement.setString(4, makedate(date));
+				// this should be a real json thingy.
+				statement.setString(5, "{ video_position_in_seconds: "+positionInSeconds+"}");
+				statement.executeUpdate();
+				return statement;
 
-			mutator.addInsertion(username + ":" + videoId, "video_event",
-					HFactory.createStringColumn("stop:" + stopEvent, videoTimestamp.toString()));
-
-			mutator.execute();
-		} catch (HectorException he) {
-			he.printStackTrace();
-		}
+			}
+		});
 	}
 
 	public Timestamp getVideoLastStopEvent(UUID videoId, String username) {

@@ -2,14 +2,12 @@ package com.killrvideo;
 
 
 import java.sql.Timestamp;
-import java.util.List;
+import java.util.Date;
 import java.util.UUID;
 
 import me.prettyprint.cassandra.model.AllOneConsistencyLevelPolicy;
 import me.prettyprint.hector.api.Cluster;
-import me.prettyprint.hector.api.ConsistencyLevelPolicy;
 import me.prettyprint.hector.api.Keyspace;
-import me.prettyprint.hector.api.ddl.KeyspaceDefinition;
 import me.prettyprint.hector.api.factory.HFactory;
 
 public class Runner {
@@ -62,13 +60,13 @@ public class Runner {
 		bl.setRating(videoId, 4, keyspace);
 
 		System.out.println("Setting a start event");
-		Timestamp startEvent = new Timestamp(new java.util.Date().getTime());
+		Date startEvent = new Date();
 		bl.setVideoStartEvent(videoId, "pmcfadin", startEvent, keyspace);
 
 		System.out.println("Setting a stop event");
-		Timestamp stopEvent = new Timestamp(new java.util.Date().getTime());
-		Timestamp videoTimestamp = new Timestamp(new java.util.Date().getTime());
-		bl.setVideoStopEvent(videoId, "pmcfadin", stopEvent, videoTimestamp, keyspace);
+		Date stopEvent = new Date();
+		int stopPosition = 240;
+		bl.setVideoStopEvent(videoId, "pmcfadin", stopEvent,stopPosition, keyspace);
 	}
 
 

@@ -31,14 +31,16 @@ CREATE TABLE video_rating (
 CREATE TABLE video_event (
 	videoid uuid,
 	username varchar,
-	event varchar,
-	PRIMARY KEY (videoid, username)
+	event_type varchar,
+	event_date varchar,
+	extra_info varchar,
+	PRIMARY KEY (videoid, username, event_type)
 );
 
 CREATE TABLE tag_index (
 	tag varchar,
 	videoid uuid,
-	timestamp varchar,
+	info varchar,
 	PRIMARY KEY (tag, videoid)
 );
 	

@@ -8,6 +8,7 @@ To setup the database, run the creation script using the cassandra-cli using the
 
 cassandra-cli -host localhost -port 9160 -f create-database-cli.txt
 
+cqlsh -k Killrvideo -3 < setup.cql
 
 ##Stubbed methods
 
