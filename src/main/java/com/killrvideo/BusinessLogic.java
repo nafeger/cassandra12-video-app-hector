@@ -226,7 +226,7 @@ public class BusinessLogic {
 
 		try {
 
-			mutator.addCounter(videoId, "video_rating", HFactory.createCounterColumn("rating_count", 1));
+			mutator.addCounter(videoId, "video_rating", HFactory.createCounterColumn("rating_counter", 1));
 			mutator.addCounter(videoId, "video_rating", HFactory.createCounterColumn("rating_total", ratingNumber));
 
 			mutator.execute();
